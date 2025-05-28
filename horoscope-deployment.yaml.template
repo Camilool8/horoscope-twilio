@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: horoscope-sender
+  labels:
+    app: horoscope-sender
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: horoscope-sender
+  template:
+    metadata:
+      labels:
+        app: horoscope-sender
+    spec:
+      containers:
+        - name: horoscope-sender
+          image: your-registry/horoscope-sender:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: health
+          envFrom:
+            - secretRef:
+                name: horoscope-sender-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: horoscope-sender
+spec:
+  selector:
+    app: horoscope-sender
+  ports:
+    - port: 8080
+      targetPort: health
+      name: health
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: horoscope-sender-secrets
+type: Opaque
+data:
+  EMAIL_USER: <your-email>
+  EMAIL_PASSWORD: <your-password>
+  RECIPIENT_EMAIL: <your-email>
+  RECIPIENT_PHONE: <recipient-phone>
+  TWILIO_ACCOUNT_SID: <your-twilio-account-sid>
+  TWILIO_AUTH_TOKEN: <your-twilio-auth-token>
+  TWILIO_PHONE_NUMBER: <your-twilio-phone-number>
+  RAPIDAPI_KEY: <your-rapidapi-key>
+  SEND_ON_STARTUP: true
+  TZ: America/Santo_Domingo
+  HEALTH_PORT: "8080" # Health check port
+  ENABLE_HEALTH_CHECK: "true" # Enable health check
+---
+
